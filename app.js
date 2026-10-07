@@ -45,6 +45,7 @@ var ALL_EXERCISES = WORKOUTS.upper.exercises.concat(WORKOUTS.legs.exercises, WOR
 var DB = { checkins: [], weights: [], months: [] };
 var logDate = todayStr();
 var logKey = null;
+var logStartTime = null; // ISO timestamp set when she picks a workout
 
 /* ---------- helpers ---------- */
 function esc(s) {
@@ -100,13 +101,17 @@ function api(action, params) {
   var qs = Object.keys(params).map(function (k) {
     return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
   }).join("&");
-  return fetch(API_URL + "?" + qs).then(function (res) {
+  var timeout = new Promise(function (_, reject) {
+    setTimeout(function () { reject(new Error("Request timed out")); }, 20000);
+  });
+  var req = fetch(API_URL + "?" + qs).then(function (res) {
     if (!res.ok) throw new Error("Network error (" + res.status + ")");
     return res.json();
   }).then(function (data) {
     if (data && data.ok === false) throw new Error(data.error || "Server error");
     return data;
   });
+  return Promise.race([req, timeout]);
 }
 function refresh() {
   return api("read").then(function (data) {
@@ -172,6 +177,10 @@ function lastWeight(ex) {
 }
 function openDetail(key) {
   logKey = key;
+  // Track when she starts logging: times the workout + enables the 2h nudge if she never submits.
+  logStartTime = new Date().toISOString();
+  api("start", { startedAt: logStartTime, date: document.getElementById("log-date").value || todayStr() })
+    .catch(function () { /* best-effort; never block the UI */ });
   var w = WORKOUTS[key];
   document.getElementById("detail-title").textContent = w.emoji + " " + w.name;
   document.getElementById("detail-tag").textContent = w.tag;
@@ -228,7 +237,8 @@ function saveWorkout() {
   }
   btn.disabled = true;
   setStatus("log-status", "Saving your sunshine… ☁️");
-  api("log", { date: date, day: dayName(date), workout: w.name, detail: detail, note: note })
+  api("log", { date: date, day: dayName(date), workout: w.name, detail: detail, note: note,
+    startedAt: logStartTime || "", items: JSON.stringify(items) })
     .then(function () {
       if (w.type === "lift") {
         return api("weights", { date: date, items: JSON.stringify(items) }).then(function () { return "both"; });
@@ -379,6 +389,9 @@ function init() {
   document.getElementById("save-workout").addEventListener("click", saveWorkout);
   document.getElementById("ex-select").addEventListener("change", renderWeights);
   document.getElementById("save-month").addEventListener("click", saveMonth);
+  // Show today's message right away — it never needs the network.
+  document.getElementById("streak-num").textContent = "–";
+  document.getElementById("daily-msg").textContent = MESSAGES[dayOfYear() % MESSAGES.length];
   setStatus("home-status", "Loading your sunshine… ☁️");
   refresh().then(function () {
     renderHome();
