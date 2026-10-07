@@ -171,9 +171,36 @@ function renderPicker() {
 }
 function lastWeight(ex) {
   for (var i = DB.weights.length - 1; i >= 0; i--) {
-    if (String(DB.weights[i][1]) === ex) return { weight: DB.weights[i][2], reps: DB.weights[i][3] };
+    var r = DB.weights[i];
+    if (String(r[1]) !== ex) continue;
+    // New layout is [Date, Exercise, Set, Weight, Reps]; old was [Date, Exercise, Weight, Reps].
+    if (r.length >= 5) return { weight: r[3], reps: r[4] };
+    return { weight: r[2], reps: r[3] };
   }
   return { weight: "", reps: "" };
+}
+/* One set row inside an exercise card. i = exercise index, s = set number. */
+function setRowHTML(i, s, w, r) {
+  return '<div class="set-row" data-ex="' + i + '" data-set="' + s + '">' +
+    '<span class="set-label">Set ' + s + '</span>' +
+    '<label>lbs<input type="number" inputmode="decimal" min="0" step="0.5" data-w value="' + esc(w) + '" placeholder="lbs"></label>' +
+    '<label>reps<input type="number" inputmode="numeric" min="0" step="1" data-r value="' + esc(r) + '" placeholder="reps"></label>' +
+    '</div>';
+}
+/* "+ Add set" taps (delegated on #detail-body, attached once in init). */
+function addSetTap(e) {
+  var btn = e.target && e.target.closest ? e.target.closest("[data-add]") : null;
+  if (!btn) return;
+  var i = btn.getAttribute("data-add");
+  var setsDiv = document.querySelector('.sets[data-sets="' + i + '"]');
+  if (!setsDiv) return;
+  var existing = setsDiv.querySelectorAll(".set-row");
+  var last = existing[existing.length - 1];
+  var lw = last ? last.querySelector("input[data-w]").value : "";
+  var lr = last ? last.querySelector("input[data-r]").value : "";
+  var tmp = document.createElement("div");
+  tmp.innerHTML = setRowHTML(i, existing.length + 1, lw, lr);
+  setsDiv.appendChild(tmp.firstChild);
 }
 function openDetail(key) {
   logKey = key;
@@ -195,10 +222,8 @@ function openDetail(key) {
       row.className = "ex-row";
       row.innerHTML =
         '<label class="ex-head"><input type="checkbox" data-i="' + i + '"> <span>' + esc(ex) + '</span></label>' +
-        '<div class="ex-fields">' +
-        '<label>Weight (lbs)<input type="number" inputmode="decimal" min="0" step="0.5" data-w="' + i + '" value="' + esc(lw.weight) + '" placeholder="lbs"></label>' +
-        '<label>Reps<input type="number" inputmode="numeric" min="0" step="1" data-r="' + i + '" value="' + esc(lw.reps) + '" placeholder="reps"></label>' +
-        '</div>';
+        '<div class="sets" data-sets="' + i + '">' + setRowHTML(i, 1, lw.weight, lw.reps) + '</div>' +
+        '<button type="button" class="btn secondary small add-set" data-add="' + i + '">+ Add set</button>';
       body.appendChild(row);
     });
   } else if (w.type === "cardio") {
@@ -220,17 +245,20 @@ function saveWorkout() {
   var note = document.getElementById("log-note").value.trim();
   var detail = "", items = [];
   if (w.type === "lift") {
-    var boxes = document.querySelectorAll('#detail-body input[type="checkbox"]');
-    boxes.forEach(function (cb) {
-      if (!cb.checked) return;
-      var i = cb.getAttribute("data-i");
-      var ex = w.exercises[+i];
-      var wt = document.querySelector('input[data-w="' + i + '"]').value;
-      var rp = document.querySelector('input[data-r="' + i + '"]').value;
-      items.push({ exercise: ex, weight: wt || "", reps: rp || "" });
+    var exRows = document.querySelectorAll('#detail-body .ex-row');
+    exRows.forEach(function (er) {
+      var cb = er.querySelector('input[type="checkbox"]');
+      if (!cb || !cb.checked) return;
+      var ex = w.exercises[+cb.getAttribute("data-i")];
+      er.querySelectorAll(".set-row").forEach(function (sr, sIdx) {
+        var wt = sr.querySelector("input[data-w]").value;
+        var rp = sr.querySelector("input[data-r]").value;
+        if (wt === "" && rp === "") return; // skip untouched sets
+        items.push({ exercise: ex, set: sIdx + 1, weight: wt || "", reps: rp || "" });
+      });
     });
-    if (!items.length) { toast("Check off at least one exercise first! \uD83D\uDE09", "error"); return; }
-    detail = items.length + " exercise" + (items.length > 1 ? "s" : "");
+    if (!items.length) { toast("Check off an exercise and fill in a set first! \uD83D\uDE09", "error"); return; }
+    detail = items.length + " set" + (items.length > 1 ? "s" : "");
   } else if (w.type === "cardio") {
     var mins = document.getElementById("cardio-mins").value || "";
     detail = mins ? mins + " min" : "";
@@ -315,22 +343,38 @@ function renderExSelect() {
   });
   if (cur && ALL_EXERCISES.indexOf(cur) >= 0) sel.value = cur;
 }
+function fmtSet(wt, rp) {
+  var w = (wt === "" || wt == null) ? "\u2013" : String(wt);
+  var r = (rp === "" || rp == null) ? "" : "\u00D7" + rp;
+  return w + r;
+}
 function renderWeights() {
   var ex = document.getElementById("ex-select").value || ALL_EXERCISES[0];
   var list = document.getElementById("weights-list");
   list.innerHTML = "";
-  var rows = DB.weights.filter(function (r) { return String(r[1]) === ex; }).slice().reverse();
-  if (!rows.length) {
+  var byDate = {}, order = [];
+  DB.weights.forEach(function (r) {
+    if (String(r[1]) !== ex) return;
+    // New layout is [Date, Exercise, Set, Weight, Reps]; old was [Date, Exercise, Weight, Reps].
+    var setNo = 1, wt, rp;
+    if (r.length >= 5) { setNo = r[2]; wt = r[3]; rp = r[4]; }
+    else { wt = r[2]; rp = r[3]; }
+    var d = String(r[0]);
+    if (!byDate[d]) { byDate[d] = []; order.push(d); }
+    byDate[d].push({ set: Number(setNo) || 0, weight: wt, reps: rp });
+  });
+  if (!order.length) {
     list.innerHTML = '<div class="empty">No weights logged for this one yet \uD83D\uDCAA</div>';
     return;
   }
-  rows.forEach(function (r) {
-    var d = document.createElement("div");
-    d.className = "w-row";
-    d.innerHTML = '<span class="d">' + esc(prettyDate(r[0])) + '</span>' +
-      '<span class="v">' + esc(r[2] === "" || r[2] == null ? "–" : r[2] + " lbs") + '</span>' +
-      '<span>' + esc(r[3] === "" || r[3] == null ? "–" : r[3] + " reps") + '</span>';
-    list.appendChild(d);
+  order.reverse().forEach(function (d) {
+    var sets = byDate[d].sort(function (a, b) { return a.set - b.set; })
+      .map(function (s) { return fmtSet(s.weight, s.reps); }).join(" \u00B7 ");
+    var div = document.createElement("div");
+    div.className = "w-row";
+    div.innerHTML = '<span class="d">' + esc(prettyDate(d)) + '</span>' +
+      '<span class="sets-line">' + esc(sets) + '</span>';
+    list.appendChild(div);
   });
 }
 
@@ -387,6 +431,7 @@ function init() {
   document.getElementById("back-to-pick").addEventListener("click", renderPicker);
   document.getElementById("log-date").addEventListener("change", function (e) { logDate = e.target.value || todayStr(); });
   document.getElementById("save-workout").addEventListener("click", saveWorkout);
+  document.getElementById("detail-body").addEventListener("click", addSetTap);
   document.getElementById("ex-select").addEventListener("change", renderWeights);
   document.getElementById("save-month").addEventListener("click", saveMonth);
   // Show today's message right away — it never needs the network.
