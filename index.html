@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ff6fa5">
+<title>Jaden's Workout Tracker 💖</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="logo">🌸</div>
+  <h1>Jaden's Workout Tracker</h1>
+  <div class="logo">🌸</div>
+</header>
+
+<main>
+  <!-- HOME -->
+  <section id="view-home" class="view">
+    <div class="card streak-card">
+      <div class="streak-num" id="streak-num">–</div>
+      <div class="streak-label">days consistent 💖</div>
+      <div class="streak-sub" id="streak-sub"></div>
+    </div>
+    <div class="card message-card">
+      <div class="msg-emoji">✨</div>
+      <p id="daily-msg">Loading today's sunshine…</p>
+    </div>
+    <button class="btn primary big" id="go-log">Log today's workout 💪</button>
+    <div class="status" id="home-status"></div>
+  </section>
+
+  <!-- LOG -->
+  <section id="view-log" class="view hidden">
+    <div id="log-step-pick">
+      <h2>What are we doing today? 🌷</h2>
+      <label class="date-label">Date
+        <input type="date" id="log-date">
+      </label>
+      <div class="workout-grid" id="workout-grid"></div>
+    </div>
+    <div id="log-step-detail" class="hidden">
+      <button class="btn secondary small" id="back-to-pick">← all workouts</button>
+      <h2 id="detail-title"></h2>
+      <p class="tagline" id="detail-tag"></p>
+      <div id="detail-body"></div>
+      <label class="note-label">Note for today 💭
+        <input type="text" id="log-note" placeholder="How did it feel?" maxlength="200">
+      </label>
+      <button class="btn primary big" id="save-workout">Save workout 🎉</button>
+      <div class="status" id="log-status"></div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="view-history" class="view hidden">
+    <h2>Your journey 🌈</h2>
+    <div class="status" id="hist-status"></div>
+    <div id="checkin-list"></div>
+    <h2>Strength history 🏋️‍♀️</h2>
+    <select id="ex-select" class="select"></select>
+    <div class="status" id="weights-status"></div>
+    <div id="weights-list"></div>
+  </section>
+
+  <!-- MONTH -->
+  <section id="view-month" class="view hidden">
+    <h2>This month's glow-up 🌟</h2>
+    <div class="card">
+      <div class="month-label" id="month-label"></div>
+      <label class="field">Goal 🎯
+        <textarea id="month-goal" rows="2" maxlength="300" placeholder="What's the goal this month?"></textarea>
+      </label>
+      <label class="field">Best win 🏆
+        <textarea id="month-win" rows="2" maxlength="300" placeholder="Proudest moment so far…"></textarea>
+      </label>
+      <button class="btn primary" id="save-month">Save 💾</button>
+      <div class="status" id="month-status"></div>
+    </div>
+    <h2>Past months 📖</h2>
+    <div id="month-list"></div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button class="tab active" data-view="home">🏠<span>Home</span></button>
+  <button class="tab" data-view="log">➕<span>Log</span></button>
+  <button class="tab" data-view="history">📜<span>History</span></button>
+  <button class="tab" data-view="month">🗓️<span>Month</span></button>
+</nav>
+
+<div id="toast-wrap"></div>
+<script src="app.js"></script>
+</body>
+</html>
