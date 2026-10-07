@@ -41,6 +41,32 @@ var WORKOUTS = {
 var REST_NAME = WORKOUTS.rest.name;
 var ALL_EXERCISES = WORKOUTS.upper.exercises.concat(WORKOUTS.legs.exercises, WORKOUTS.circuit.exercises);
 
+/* ------------------------------------------------------------------
+   EXERCISE HELP VIDEOS — "Need help? 🎥" links under each lift exercise.
+   Real Instagram reels/posts demonstrating good form, verified Oct 2026.
+   To update a link, just replace the URL string. To remove a video,
+   delete its line and the help link won't render for that exercise.
+   NOTE: "Elevated push-ups" intentionally has no link — no verified
+   Instagram demo of that exact variation was found (a missing link is
+   better than a wrong one).
+------------------------------------------------------------------ */
+var EXERCISE_VIDEOS = {
+  "Landmine rows": "https://www.instagram.com/reel/DcZzJZEKA5H/",
+  "Seated rows or lat pulldowns": "https://www.instagram.com/reel/Dc9J-EnJlEa/",
+  "Seated incline bicep curls": "https://www.instagram.com/reel/DSWTKzLASVU/",
+  "21s Z-bar": "https://www.instagram.com/reel/DZYzjJxxKQY/",
+  "Cable tricep pushdowns": "https://www.instagram.com/reel/DcvmkH5OSYr/",
+  "Leg press": "https://www.instagram.com/reel/DVzbgb_Esr0/",
+  "B-stance RDL": "https://www.instagram.com/reel/DdPw6llpZWA/",
+  "Weighted lunges": "https://www.instagram.com/reel/DcRfKAngzuI/",
+  "Hamstring curl": "https://www.instagram.com/reel/DWUiBKQD-Yo/",
+  "Leg extension": "https://www.instagram.com/reel/DUV_oBWkZvp/",
+  "Barbell OHP": "https://www.instagram.com/reel/DdF_8t1ylSh/",
+  "Around the worlds": "https://www.instagram.com/reel/Dc_1kHjIeFT/",
+  "Cable rear delt flies": "https://www.instagram.com/reel/DcgnMi-II1W/",
+  "Ski erg / rows": "https://www.instagram.com/reel/DaPUFm9zKB7/"
+};
+
 /* ---------- state ---------- */
 var DB = { checkins: [], weights: [], months: [] };
 var logDate = todayStr();
@@ -128,8 +154,13 @@ function show(view) {
   document.querySelectorAll(".tab").forEach(function (t) {
     t.classList.toggle("active", t.getAttribute("data-view") === view);
   });
-  if (view === "history") renderHistory();
-  if (view === "month") renderMonth();
+  if (view === "calendar") {
+    renderCalMonth();
+    renderCalendar();
+    renderMonth();
+    renderExSelect();
+    renderWeights();
+  }
   window.scrollTo(0, 0);
 }
 
@@ -187,6 +218,86 @@ function setRowHTML(i, s, w, r) {
     '<label>reps<input type="number" inputmode="numeric" min="0" step="1" data-r value="' + esc(r) + '" placeholder="reps"></label>' +
     '</div>';
 }
+/* Normalize a Weights row to {date, exercise, set, weight, reps}.
+   New layout is [Date, Exercise, Set, Weight, Reps]; old was [Date, Exercise, Weight, Reps]. */
+function normWRow(r) {
+  if (r.length >= 5) return { date: String(r[0]), exercise: String(r[1]), set: r[2], weight: r[3], reps: r[4] };
+  return { date: String(r[0]), exercise: String(r[1]), set: 1, weight: r[2], reps: r[3] };
+}
+function num(x) {
+  var n = parseFloat(x);
+  return isNaN(n) ? null : n;
+}
+/* Most recent date strictly before `date` with sets logged for the exercise. */
+function lastSession(ex, date) {
+  var byDate = {}, best = null;
+  DB.weights.forEach(function (r) {
+    var w = normWRow(r);
+    if (w.exercise !== ex) return;
+    if (!w.date || w.date >= date) return;
+    if (!byDate[w.date]) byDate[w.date] = [];
+    byDate[w.date].push(w);
+  });
+  Object.keys(byDate).forEach(function (d) { if (best === null || d > best) best = d; });
+  if (best === null) return null;
+  return { date: best, sets: byDate[best] };
+}
+/* All-time max weight for the exercise on dates strictly before `date`. */
+function prevMaxWeight(ex, date) {
+  var mx = null;
+  DB.weights.forEach(function (r) {
+    var w = normWRow(r);
+    if (w.exercise !== ex) return;
+    if (!w.date || w.date >= date) return;
+    var wt = num(w.weight);
+    if (wt === null) return;
+    if (mx === null || wt > mx) mx = wt;
+  });
+  return mx;
+}
+/* Progressive-overload coach (E): suggestion + Set-1 prefill from her last session. */
+var LEG_EXERCISES = ["Leg press", "B-stance RDL", "Weighted lunges", "Hamstring curl", "Leg extension"];
+function coachFor(ex, date) {
+  var sess = lastSession(ex, date);
+  if (!sess) {
+    var lw = lastWeight(ex);
+    return { line: "", weight: lw.weight, reps: lw.reps };
+  }
+  var topW = null, topReps = "", wCount = 0, repSum = 0, repCount = 0;
+  sess.sets.forEach(function (s) {
+    var wt = num(s.weight), rp = num(s.reps);
+    if (wt !== null) {
+      wCount++;
+      if (topW === null || wt > topW) { topW = wt; topReps = s.reps == null ? "" : String(s.reps); }
+    }
+    if (rp !== null) { repSum += rp; repCount++; }
+  });
+  if (topW === null) {
+    var lw2 = lastWeight(ex);
+    return { line: "", weight: lw2.weight, reps: lw2.reps };
+  }
+  var avg = repCount ? repSum / repCount : null;
+  var setsTxt = "Last time: " + topW + " lbs \u00D7 " +
+    sess.sets.map(function (s) { return s.reps == null || s.reps === "" ? "\u2013" : String(s.reps); }).join(", ");
+  var bump = LEG_EXERCISES.indexOf(ex) >= 0 ? 10 : 5;
+  if (wCount >= 2 && avg !== null && avg >= 8) {
+    var target = Math.round((topW + bump) * 10) / 10;
+    return {
+      line: setsTxt + " \u2014 you crushed it! Try " + target + " lbs today \uD83D\uDCAA",
+      weight: String(target), reps: topReps
+    };
+  }
+  return { line: setsTxt + " \uD83D\uDC96", weight: String(topW), reps: topReps };
+}
+/* Workout name -> WORKOUTS key, for emoji + type lookups. */
+var NAME2KEY = {};
+Object.keys(WORKOUTS).forEach(function (k) { NAME2KEY[WORKOUTS[k].name] = k; });
+function checkinByDate(ds) {
+  for (var i = 0; i < DB.checkins.length; i++) {
+    if (String(DB.checkins[i][0]) === ds) return DB.checkins[i];
+  }
+  return null;
+}
 /* "+ Add set" taps (delegated on #detail-body, attached once in init). */
 function addSetTap(e) {
   var btn = e.target && e.target.closest ? e.target.closest("[data-add]") : null;
@@ -217,12 +328,14 @@ function openDetail(key) {
   body.innerHTML = "";
   if (w.type === "lift") {
     w.exercises.forEach(function (ex, i) {
-      var lw = lastWeight(ex);
+      var coach = coachFor(ex, logDate);
       var row = document.createElement("div");
       row.className = "ex-row";
       row.innerHTML =
         '<label class="ex-head"><input type="checkbox" data-i="' + i + '"> <span>' + esc(ex) + '</span></label>' +
-        '<div class="sets" data-sets="' + i + '">' + setRowHTML(i, 1, lw.weight, lw.reps) + '</div>' +
+        (EXERCISE_VIDEOS[ex] ? '<a class="help-link" href="' + EXERCISE_VIDEOS[ex] + '" target="_blank" rel="noopener">Need help? 🎥</a>' : "") +
+        (coach.line ? '<div class="coach-line">💡 ' + esc(coach.line) + '</div>' : "") +
+        '<div class="sets" data-sets="' + i + '">' + setRowHTML(i, 1, coach.weight, coach.reps) + '</div>' +
         '<button type="button" class="btn secondary small add-set" data-add="' + i + '">+ Add set</button>';
       body.appendChild(row);
     });
@@ -265,8 +378,20 @@ function saveWorkout() {
   }
   btn.disabled = true;
   setStatus("log-status", "Saving your sunshine… ☁️");
+  // Personal records: any set beating her all-time max for that exercise (before this date).
+  var prs = [];
+  if (w.type === "lift") {
+    items.forEach(function (it) {
+      var wt = num(it.weight);
+      if (wt === null) return;
+      var prevMax = prevMaxWeight(it.exercise, date);
+      if (prevMax !== null && wt > prevMax) {
+        prs.push({ exercise: it.exercise, weight: it.weight, reps: it.reps || "" });
+      }
+    });
+  }
   api("log", { date: date, day: dayName(date), workout: w.name, detail: detail, note: note,
-    startedAt: logStartTime || "", items: JSON.stringify(items) })
+    startedAt: logStartTime || "", items: JSON.stringify(items), prs: JSON.stringify(prs) })
     .then(function () {
       if (w.type === "lift") {
         return api("weights", { date: date, items: JSON.stringify(items) }).then(function () { return "both"; });
@@ -278,9 +403,13 @@ function saveWorkout() {
     })
     .then(function () {
       renderHome();
+      if (prs.length) {
+        showPRModal(prs);
+      } else {
       setStatus("log-status", "Saved! You're amazing! \uD83C\uDF89", "ok");
       toast("Workout logged! \uD83C\uDF89", "ok");
       setTimeout(function () { renderPicker(); show("home"); }, 1200);
+      }
     })
     .catch(function (err) {
       setStatus("log-status", "Couldn't save \u2014 check your connection and try again.", "error");
@@ -289,48 +418,108 @@ function saveWorkout() {
     .then(function () { btn.disabled = false; });
 }
 
-/* ---------- history ---------- */
-function renderHistory() {
-  var list = document.getElementById("checkin-list");
-  setStatus("hist-status", DB.checkins.length ? "" : "");
-  list.innerHTML = "";
-  if (!DB.checkins.length) {
-    list.innerHTML = '<div class="empty">No workouts yet \u2014 time to make some magic! \u2728</div>';
-  }
-  var rows = DB.checkins.slice().reverse();
-  rows.forEach(function (r) {
-    var date = r[0], workout = String(r[2] || ""), detail = r[3], note = r[4];
-    var key = Object.keys(WORKOUTS).filter(function (k) { return WORKOUTS[k].name === workout; })[0];
-    var emoji = key ? WORKOUTS[key].emoji : "\uD83C\uDF38";
-    var div = document.createElement("div");
-    div.className = "hist-item";
-    div.innerHTML =
-      '<div class="hist-emoji">' + emoji + '</div>' +
-      '<div class="hist-main"><div class="hist-name">' + esc(workout) + '</div>' +
-      '<div class="hist-meta">' + esc(prettyDate(date)) + (detail ? " \u00B7 " + esc(detail) : "") + '</div>' +
-      (note ? '<div class="hist-note">\uD83D\uDCAD ' + esc(note) + '</div>' : '') + '</div>';
-    var u = document.createElement("button");
-    u.className = "btn secondary small";
-    u.textContent = "Undo";
-    u.addEventListener("click", function () {
-      if (!confirm("Remove this check-in from " + prettyDate(date) + "?")) return;
-      u.disabled = true;
-      setStatus("hist-status", "Undoing…");
-      api("unlog", { date: date }).then(refresh).then(function () {
-        renderHome(); renderHistory();
-        toast("Undone \u2014 no worries! \uD83D\uDC96", "ok");
-        setStatus("hist-status", "");
-      }).catch(function (err) {
-        setStatus("hist-status", "Couldn't undo \u2014 try again.", "error");
-        toast("Undo failed: " + err.message, "error");
-        u.disabled = false;
-      });
-    });
-    div.appendChild(u);
-    list.appendChild(div);
+/* ---------- calendar ---------- */
+var calY = null, calM = null, calDetailDate = null;
+function renderCalMonth() {
+  var now = new Date();
+  if (calY === null) { calY = now.getFullYear(); calM = now.getMonth(); }
+}
+function renderCalendar() {
+  renderCalMonth();
+  document.getElementById("cal-title").textContent =
+    new Date(calY, calM, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  var grid = document.getElementById("cal-grid");
+  grid.innerHTML = "";
+  ["S", "M", "T", "W", "T", "F", "S"].forEach(function (d) {
+    var h = document.createElement("div");
+    h.className = "cal-dow";
+    h.textContent = d;
+    grid.appendChild(h);
   });
-  renderExSelect();
-  renderWeights();
+  var first = new Date(calY, calM, 1).getDay();
+  var daysIn = new Date(calY, calM + 1, 0).getDate();
+  var todayS = todayStr();
+  for (var b = 0; b < first; b++) {
+    var blank = document.createElement("div");
+    blank.className = "cal-day blank";
+    grid.appendChild(blank);
+  }
+  for (var d = 1; d <= daysIn; d++) {
+    (function (day) {
+      var ds = calY + "-" + String(calM + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+      var ci = checkinByDate(ds);
+      var cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "cal-day" + (ci ? " has-log" : "") + (ds === todayS ? " today" : "");
+      var inner = '<span class="cal-num">' + day + "</span>";
+      if (ci) {
+        var key = NAME2KEY[String(ci[2] || "")];
+        var w = key ? WORKOUTS[key] : null;
+        inner += '<span class="cal-emoji">' + (w ? w.emoji : "🌸") + "</span>" +
+          '<span class="dot ' + (w ? "t-" + w.type : "t-rest") + '"></span>';
+      }
+      cell.innerHTML = inner;
+      cell.addEventListener("click", function () { renderDayDetail(ds); });
+      grid.appendChild(cell);
+    })(d);
+  }
+  if (calDetailDate) renderDayDetail(calDetailDate);
+}
+function renderDayDetail(ds) {
+  calDetailDate = ds;
+  var wrap = document.getElementById("day-detail");
+  var ci = checkinByDate(ds);
+  if (!ci) {
+    wrap.innerHTML = '<div class="card day-detail"><p class="tagline">Nothing logged this day — tap the ➕ to add a workout! 🌷</p></div>';
+    return;
+  }
+  var key = NAME2KEY[String(ci[2] || "")];
+  var w = key ? WORKOUTS[key] : null;
+  var html = '<div class="card day-detail">' +
+    '<div class="dd-head">' + (w ? w.emoji : "🌸") + " <strong>" + esc(ci[2] || "Workout") + "</strong></div>" +
+    '<div class="dd-date">' + esc(prettyDate(ds)) + (ci[1] ? " · " + esc(ci[1]) : "") + "</div>";
+  var byEx = {}, order = [];
+  DB.weights.forEach(function (r) {
+    var wr = normWRow(r);
+    if (wr.date !== ds) return;
+    if (!byEx[wr.exercise]) { byEx[wr.exercise] = []; order.push(wr.exercise); }
+    byEx[wr.exercise].push(wr);
+  });
+  order.forEach(function (ex) {
+    var sets = byEx[ex]
+      .sort(function (a, b) { return (Number(a.set) || 0) - (Number(b.set) || 0); })
+      .map(function (s) { return fmtSet(s.weight, s.reps); }).join(" · ");
+    html += '<div class="dd-ex"><strong>' + esc(ex) + "</strong><br>" + esc(sets) + "</div>";
+  });
+  if (ci[3] && !order.length) html += '<div class="dd-ex">' + esc(ci[3]) + "</div>";
+  if (ci[4]) html += '<div class="dd-note">💭 ' + esc(ci[4]) + "</div>";
+  html += '<button type="button" class="btn secondary small" id="dd-undo">Undo this day</button>' +
+    '<div class="status" id="dd-status"></div></div>';
+  wrap.innerHTML = html;
+  document.getElementById("dd-undo").addEventListener("click", function () {
+    if (!confirm("Remove the check-in for " + prettyDate(ds) + "?")) return;
+    var btn = document.getElementById("dd-undo");
+    btn.disabled = true;
+    setStatus("dd-status", "Undoing…");
+    api("unlog", { date: ds }).then(refresh).then(function () {
+      calDetailDate = null;
+      renderCalendar();
+      renderHome();
+      toast("Undone — no worries! 💖", "ok");
+    }).catch(function (err) {
+      setStatus("dd-status", "Couldn't undo — try again.", "error");
+      btn.disabled = false;
+    });
+  });
+}
+function calShift(delta) {
+  renderCalMonth();
+  calM += delta;
+  if (calM < 0) { calM = 11; calY--; }
+  if (calM > 11) { calM = 0; calY++; }
+  calDetailDate = null;
+  document.getElementById("day-detail").innerHTML = "";
+  renderCalendar();
 }
 function renderExSelect() {
   var sel = document.getElementById("ex-select");
@@ -378,6 +567,96 @@ function renderWeights() {
   });
 }
 
+/* ---------- PR celebration ---------- */
+function showPRModal(prs) {
+  var list = document.getElementById("pr-list");
+  list.innerHTML = "";
+  prs.forEach(function (p) {
+    var d = document.createElement("div");
+    d.textContent = p.exercise + " — " + p.weight + " lbs" + (p.reps ? " × " + p.reps : "") + " 🎉";
+    list.appendChild(d);
+  });
+  document.getElementById("pr-modal").classList.remove("hidden");
+}
+function closePRModal() {
+  document.getElementById("pr-modal").classList.add("hidden");
+  setStatus("log-status", "Saved! You're amazing! 🎉", "ok");
+  toast("Workout logged! 🎉", "ok");
+  renderPicker();
+  show("home");
+}
+
+/* ---------- weekly share card ---------- */
+function ymdLocal(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function shareWeek() {
+  var now = new Date();
+  var mon = new Date(now);
+  mon.setDate(now.getDate() - ((now.getDay() + 6) % 7)); // Monday
+  var days = [];
+  for (var k = 0; k < 7; k++) {
+    var t = new Date(mon);
+    t.setDate(mon.getDate() + k);
+    days.push(t);
+  }
+  var monStr = ymdLocal(days[0]), sunStr = ymdLocal(days[6]);
+  var names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  var lines = ["🌸 Jaden's week! 💪"];
+  var seen = {}, consistent = 0;
+  days.forEach(function (dt, idx) {
+    var ds = ymdLocal(dt);
+    var ci = checkinByDate(ds);
+    if (!ci) { lines.push(names[idx] + ": —"); return; }
+    var wname = String(ci[2] || "");
+    if (wname === REST_NAME) { lines.push(names[idx] + ": Rest day 😴"); return; }
+    if (!seen[ds]) { seen[ds] = 1; consistent++; }
+    var nSets = 0;
+    DB.weights.forEach(function (r) { if (String(r[0]) === ds) nSets++; });
+    var detailTxt = nSets ? " — " + nSets + " set" + (nSets > 1 ? "s" : "")
+      : (ci[3] ? " — " + ci[3] : "");
+    lines.push(names[idx] + ": " + wname + detailTxt);
+  });
+  // PRs this week: per exercise, this week's max vs all-time max before this week.
+  var exWeekMax = {}, exPreMax = {};
+  DB.weights.forEach(function (r) {
+    var wr = normWRow(r);
+    var wt = num(wr.weight);
+    if (wt === null) return;
+    if (wr.date >= monStr && wr.date <= sunStr) {
+      exWeekMax[wr.exercise] = Math.max(exWeekMax[wr.exercise] || 0, wt);
+    } else if (wr.date < monStr) {
+      exPreMax[wr.exercise] = Math.max(exPreMax[wr.exercise] || 0, wt);
+    }
+  });
+  var prCount = 0;
+  Object.keys(exWeekMax).forEach(function (ex) {
+    // A PR needs a real baseline to beat — no pre-week max, no PR (same rule as the save-time check).
+    if (exPreMax[ex] && exWeekMax[ex] > exPreMax[ex]) prCount++;
+  });
+  lines.push("🔥 " + consistent + " day" + (consistent === 1 ? "" : "s") +
+    " consistent · 🏆 " + prCount + " new PR" + (prCount === 1 ? "" : "s") + "!");
+  var text = lines.join("\n");
+  if (navigator.share) {
+    navigator.share({ text: text }).catch(function () { /* user dismissed */ });
+  } else if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () {
+      toast("Copied! Paste it in a text 💕", "ok");
+    }).catch(function () { toast("Couldn't copy — sorry!", "error"); });
+  } else {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      toast("Copied! Paste it in a text 💕", "ok");
+    } catch (e) {
+      toast("Couldn't copy — sorry!", "error");
+    }
+    ta.remove();
+  }
+}
 /* ---------- month ---------- */
 function renderMonth() {
   var ym = todayStr().slice(0, 7);
@@ -434,6 +713,10 @@ function init() {
   document.getElementById("detail-body").addEventListener("click", addSetTap);
   document.getElementById("ex-select").addEventListener("change", renderWeights);
   document.getElementById("save-month").addEventListener("click", saveMonth);
+  document.getElementById("cal-prev").addEventListener("click", function () { calShift(-1); });
+  document.getElementById("cal-next").addEventListener("click", function () { calShift(1); });
+  document.getElementById("share-week").addEventListener("click", shareWeek);
+  document.getElementById("pr-close").addEventListener("click", closePRModal);
   // Show today's message right away — it never needs the network.
   document.getElementById("streak-num").textContent = "–";
   document.getElementById("daily-msg").textContent = MESSAGES[dayOfYear() % MESSAGES.length];

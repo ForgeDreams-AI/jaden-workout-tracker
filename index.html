@@ -27,6 +27,7 @@
       <p id="daily-msg">Loading today's sunshine…</p>
     </div>
     <button class="btn primary big" id="go-log">Log today's workout 💪</button>
+    <button class="btn secondary big" id="share-week">Share my week 📤</button>
     <div class="status" id="home-status"></div>
   </section>
 
@@ -52,20 +53,8 @@
     </div>
   </section>
 
-  <!-- HISTORY -->
-  <section id="view-history" class="view hidden">
-    <h2>Your journey 🌈</h2>
-    <div class="status" id="hist-status"></div>
-    <div id="checkin-list"></div>
-    <h2>Strength history 🏋️‍♀️</h2>
-    <select id="ex-select" class="select"></select>
-    <div class="status" id="weights-status"></div>
-    <div id="weights-list"></div>
-  </section>
-
-  <!-- MONTH -->
-  <section id="view-month" class="view hidden">
-    <h2>This month's glow-up 🌟</h2>
+  <!-- CALENDAR -->
+  <section id="view-calendar" class="view hidden">
     <div class="card">
       <div class="month-label" id="month-label"></div>
       <label class="field">Goal 🎯
@@ -76,18 +65,43 @@
       </label>
       <button class="btn primary" id="save-month">Save 💾</button>
       <div class="status" id="month-status"></div>
+      <details class="past-months">
+        <summary>Past months 📖</summary>
+        <div id="month-list"></div>
+      </details>
     </div>
-    <h2>Past months 📖</h2>
-    <div id="month-list"></div>
+    <h2>Workout calendar 📅</h2>
+    <div class="card cal-card">
+      <div class="cal-head">
+        <button type="button" class="btn secondary small" id="cal-prev">←</button>
+        <div class="cal-title" id="cal-title"></div>
+        <button type="button" class="btn secondary small" id="cal-next">→</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+    <div id="day-detail"></div>
+    <h2>Strength history 🏋️‍♀️</h2>
+    <select id="ex-select" class="select"></select>
+    <div class="status" id="weights-status"></div>
+    <div id="weights-list"></div>
   </section>
 </main>
 
 <nav class="tabbar">
   <button class="tab active" data-view="home">🏠<span>Home</span></button>
-  <button class="tab" data-view="log">➕<span>Log</span></button>
-  <button class="tab" data-view="history">📜<span>History</span></button>
-  <button class="tab" data-view="month">🗓️<span>Month</span></button>
+  <button class="tab log-tab" data-view="log"><span class="plus">➕</span><span>Log</span></button>
+  <button class="tab" data-view="calendar">📅<span>Calendar</span></button>
 </nav>
+
+<div id="pr-modal" class="modal hidden">
+  <div class="modal-card">
+    <div class="pr-big">🎉</div>
+    <h2>New PR!</h2>
+    <p class="tagline">You beat your own record, queen! 👑</p>
+    <div id="pr-list"></div>
+    <button class="btn primary big" id="pr-close">Yasss! 💖</button>
+  </div>
+</div>
 
 <div id="toast-wrap"></div>
 <script src="app.js"></script>

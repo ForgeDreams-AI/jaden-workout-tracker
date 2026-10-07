@@ -90,6 +90,10 @@ h2{text-align:center;font-size:1.25rem;margin:18px 0 10px;}
 }
 .ex-head{display:flex;align-items:center;gap:10px;font-weight:800;}
 .ex-head input[type=checkbox]{width:24px;height:24px;accent-color:var(--accent-deep);}
+.help-link{
+  display:inline-block;margin:2px 0;font-size:.85rem;font-weight:800;
+  color:var(--accent-deep);text-decoration:none;padding:10px 4px;min-height:44px;
+}
 .ex-fields{display:flex;gap:8px;margin-top:10px;}
 .ex-fields label{flex:1;font-size:.8rem;color:var(--muted);font-weight:700;}
 .ex-fields input{
@@ -169,3 +173,55 @@ h2{text-align:center;font-size:1.25rem;margin:18px 0 10px;}
 }
 .tab span{font-size:.68rem;font-weight:800;}
 .tab.active{color:var(--accent-deep);background:#ffe9f2;}
+/* big center Log tab */
+.tab.log-tab .plus{
+  font-size:1.9rem;line-height:1;background:linear-gradient(135deg,var(--accent),var(--accent-deep));
+  color:#fff;width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  margin-top:-26px;box-shadow:0 6px 16px rgba(225,78,138,.4);border:3px solid #fff;
+}
+.tab.log-tab.active{background:none;color:var(--accent-deep);}
+/* coach suggestion line under an exercise */
+.coach-line{
+  background:#fff7e6;border:2px dashed var(--accent);border-radius:12px;
+  padding:8px 10px;margin:8px 0 2px;font-size:.85rem;font-weight:700;color:var(--ink);
+}
+/* calendar */
+.cal-card{padding:14px;}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.cal-title{font-weight:800;font-size:1.05rem;color:var(--accent-deep);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+.cal-dow{text-align:center;font-weight:800;color:var(--muted);font-size:.72rem;padding:4px 0;}
+.cal-day{
+  position:relative;aspect-ratio:1/1;min-height:44px;border-radius:12px;border:2px solid transparent;
+  background:#fffdfd;font-family:inherit;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px;
+}
+.cal-day.blank{background:transparent;cursor:default;}
+.cal-day.today{border-color:var(--accent);}
+.cal-day.has-log{background:#ffeef5;border-color:var(--line);}
+.cal-num{font-size:.78rem;font-weight:800;color:var(--ink);}
+.cal-emoji{font-size:1.05rem;line-height:1.1;}
+.dot{width:8px;height:8px;border-radius:50%;margin-top:2px;}
+.dot.t-lift{background:#e2638f;}
+.dot.t-cardio{background:#3fbf8f;}
+.dot.t-rest{background:#b9a7e6;}
+.day-detail{margin-top:12px;}
+.dd-head{font-size:1.1rem;}
+.dd-date{color:var(--muted);font-size:.85rem;margin:2px 0 8px;}
+.dd-ex{margin:8px 0;font-size:.95rem;line-height:1.45;}
+.dd-note{margin:8px 0;font-size:.95rem;}
+#dd-undo{margin-top:10px;}
+.past-months{margin-top:10px;}
+.past-months summary{font-weight:800;cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--accent-deep);}
+/* PR celebration modal */
+.modal{position:fixed;inset:0;background:rgba(120,40,70,.45);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px;}
+.modal.hidden{display:none;}
+.modal-card{
+  background:#fffdf8;border:3px solid var(--accent);border-radius:24px;
+  padding:28px 22px;text-align:center;max-width:340px;width:100%;
+  box-shadow:0 12px 40px rgba(225,78,138,.35);
+}
+.pr-big{font-size:3.2rem;}
+.modal-card h2{color:var(--accent-deep);margin:8px 0 2px;}
+#pr-list{margin:12px 0 18px;font-weight:700;}
+#pr-list div{margin:6px 0;}
