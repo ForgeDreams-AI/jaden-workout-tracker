@@ -68,8 +68,7 @@ var EXERCISE_VIDEOS = {
 };
 
 /* Prescribed set schemes per lift exercise (his gym-tracker style: "3 × 10"). */
-var SCHEMES = {
-  "Landmine rows": { sets: 3, reps: 10 },
+var SCHEMES = {  "Landmine rows": { sets: 3, reps: 10 },
   "Seated rows or lat pulldowns": { sets: 3, reps: 12 },
   "Seated incline bicep curls": { sets: 3, reps: 12 },
   "21s Z-bar": { sets: 3, reps: 21 },
@@ -84,6 +83,32 @@ var SCHEMES = {
   "Elevated push-ups": { sets: 3, reps: 12 },
   "Cable rear delt flies": { sets: 3, reps: 15 },
   "Ski erg / rows": { sets: 3, reps: 12 }
+};
+
+/* ------------------------------------------------------------------
+   EXERCISE DEMO PICTURES — free-exercise-db, two frames per exercise.
+   Shown in the "Need help?" bottom sheet. Verified 200 (Oct 2026).
+------------------------------------------------------------------ */
+var IMG_BASE = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
+function imgPair(path) {
+  return [IMG_BASE + path + "/0.jpg", IMG_BASE + path + "/1.jpg"];
+}
+var EXERCISE_IMAGES = {
+  "Landmine rows": imgPair("T-Bar_Row_with_Handle"),
+  "Seated rows or lat pulldowns": imgPair("Seated_Cable_Rows"),
+  "Seated incline bicep curls": imgPair("Alternate_Incline_Dumbbell_Curl"),
+  "21s Z-bar": imgPair("EZ-Bar_Curl"),
+  "Cable tricep pushdowns": imgPair("Triceps_Pushdown"),
+  "Leg press": imgPair("Leg_Press"),
+  "B-stance RDL": imgPair("Romanian_Deadlift"),
+  "Weighted lunges": imgPair("Dumbbell_Lunges"),
+  "Hamstring curl": imgPair("Lying_Leg_Curls"),
+  "Leg extension": imgPair("Leg_Extensions"),
+  "Barbell OHP": imgPair("Standing_Military_Press"),
+  "Around the worlds": imgPair("Around_The_Worlds"),
+  "Elevated push-ups": imgPair("Decline_Push-Up"),
+  "Cable rear delt flies": imgPair("Cable_Rear_Delt_Fly"),
+  "Ski erg / rows": imgPair("Rowing_Stationary")
 };
 
 /* ---------- state ---------- */
@@ -348,6 +373,63 @@ function addSetTap(e) {
   setsDiv.appendChild(tmp.firstChild);
   updateSetCount();
 }
+/* ---------- "Need help?" bottom sheet ---------- */
+/* Opens the exercise help sheet: name, demo pictures, coach tip, video link. */
+function openHelpModal(exIdx) {
+  var w = WORKOUTS[logKey];
+  if (!w) return;
+  var ex = w.exercises[+exIdx];
+  if (!ex) return;
+  var block = document.querySelector('.ex-block[data-ex="' + exIdx + '"]');
+  var coachEl = block ? block.querySelector(".coach-line") : null;
+  document.getElementById("help-title").textContent = ex;
+  var imgs = document.getElementById("help-imgs");
+  imgs.innerHTML = "";
+  var urls = EXERCISE_IMAGES[ex] || [];
+  if (!urls.length) {
+    imgs.innerHTML = '<div class="empty">No demo pictures for this one yet \uD83C\uDF37</div>';
+  } else {
+    var failed = 0;
+    urls.forEach(function (u) {
+      var img = document.createElement("img");
+      img.src = u;
+      img.alt = ex + " demo";
+      img.loading = "lazy";
+      img.onerror = function () {
+        failed++;
+        img.remove();
+        if (failed >= urls.length) {
+          imgs.innerHTML = '<div class="empty">Pictures wouldn\'t load \u2014 try the video below! \uD83C\uDF37</div>';
+        }
+      };
+      imgs.appendChild(img);
+    });
+  }
+  var hc = document.getElementById("help-coach");
+  if (coachEl && coachEl.textContent.trim()) {
+    hc.textContent = coachEl.textContent;
+    hc.style.display = "";
+  } else {
+    hc.style.display = "none";
+  }
+  var vid = document.getElementById("help-video");
+  if (EXERCISE_VIDEOS[ex]) {
+    vid.href = EXERCISE_VIDEOS[ex];
+    vid.style.display = "";
+  } else {
+    vid.style.display = "none";
+  }
+  document.getElementById("help-modal").classList.remove("hidden");
+}
+function closeHelpModal() {
+  document.getElementById("help-modal").classList.add("hidden");
+}
+/* Delegated taps on "Need help?" buttons (attached once in init). */
+function helpTap(e) {
+  var btn = e.target && e.target.closest ? e.target.closest("[data-help]") : null;
+  if (!btn) return;
+  openHelpModal(btn.getAttribute("data-help"));
+}
 function openDetail(key) {
   logKey = key;
   // Track when she starts logging: times the workout + enables the 2h nudge if she never submits.
@@ -379,7 +461,7 @@ function openDetail(key) {
           '<div class="ex-title-wrap">' +
             '<div class="ex-name">' + esc(ex) + '</div>' +
             '<div class="ex-scheme">' + scheme.sets + " \u00D7 " + scheme.reps + '</div>' +
-            (EXERCISE_VIDEOS[ex] ? '<a class="help-link" href="' + EXERCISE_VIDEOS[ex] + '" target="_blank" rel="noopener">Need help? \uD83C\uDFa5</a>' : "") +
+            (EXERCISE_VIDEOS[ex] ? '<button type="button" class="help-link" data-help="' + i + '">Need help? \uD83C\uDFa5</button>' : "") +
             (coach.line ? '<div class="coach-line">\uD83D\uDCA1 ' + esc(coach.line) + '</div>' : "") +
           '</div>' +
         '</div>' +
@@ -762,7 +844,12 @@ function init() {
   document.getElementById("log-date").addEventListener("change", function (e) { logDate = e.target.value || todayStr(); });
   document.getElementById("save-workout").addEventListener("click", saveWorkout);
   document.getElementById("detail-body").addEventListener("click", addSetTap);
+  document.getElementById("detail-body").addEventListener("click", helpTap);
   document.getElementById("detail-body").addEventListener("input", updateSetCount);
+  document.getElementById("help-close").addEventListener("click", closeHelpModal);
+  document.getElementById("help-modal").addEventListener("click", function (e) {
+    if (e.target === this) closeHelpModal(); // tap the backdrop to dismiss
+  });
   document.getElementById("ex-select").addEventListener("change", renderWeights);
   document.getElementById("save-month").addEventListener("click", saveMonth);
   document.getElementById("cal-prev").addEventListener("click", function () { calShift(-1); });
