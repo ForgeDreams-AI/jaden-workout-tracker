@@ -42,8 +42,13 @@
     </div>
     <div id="log-step-detail" class="hidden">
       <button class="btn secondary small" id="back-to-pick">← all workouts</button>
-      <h2 id="detail-title"></h2>
-      <p class="tagline" id="detail-tag"></p>
+      <div class="log-head">
+        <div class="log-head-main">
+          <h2 id="detail-title"></h2>
+          <p class="tagline" id="detail-tag"></p>
+        </div>
+        <div class="log-count" id="log-count"><span id="sets-done">0</span><span class="log-total" id="sets-total"></span></div>
+      </div>
       <div id="detail-body"></div>
       <label class="note-label">Note for today 💭
         <input type="text" id="log-note" placeholder="How did it feel?" maxlength="200">

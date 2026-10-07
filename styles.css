@@ -83,33 +83,60 @@ h2{text-align:center;font-size:1.25rem;margin:18px 0 10px;}
 .workout-card.rest{grid-column:1 / -1;}
 .tagline{text-align:center;color:var(--muted);margin:0 0 12px;}
 
-/* exercise rows */
-.ex-row{
-  background:var(--card);border:2px solid var(--line);border-radius:18px;
-  padding:12px;margin-bottom:10px;box-shadow:var(--shadow);
+/* workout log header — big name + live set counter */
+.log-head{
+  background:linear-gradient(135deg,var(--accent),var(--accent-deep));
+  border-radius:22px;padding:16px 18px;margin:10px 0 16px;
+  display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);color:#fff;
 }
-.ex-head{display:flex;align-items:center;gap:10px;font-weight:800;}
-.ex-head input[type=checkbox]{width:24px;height:24px;accent-color:var(--accent-deep);}
+.log-head-main{flex:1;min-width:0;}
+.log-head h2{margin:0;font-size:1.55rem;font-weight:900;color:#fff;text-align:left;letter-spacing:.3px;}
+.log-head .tagline{margin:4px 0 0;font-size:.88rem;color:#ffe3ee;text-align:left;}
+.log-count{display:flex;align-items:baseline;flex-shrink:0;}
+.log-count #sets-done{font-size:2.6rem;font-weight:900;line-height:1;}
+.log-count .log-total{font-size:.95rem;font-weight:700;color:#ffe3ee;}
+
+/* exercise blocks — numbered, gym-tracker style, girly pink */
+.ex-block{
+  background:var(--card);border:2px solid var(--line);border-top:6px solid var(--accent);
+  border-radius:18px;padding:14px;margin-bottom:14px;box-shadow:var(--shadow);
+}
+.ex-head-row{display:flex;gap:12px;align-items:flex-start;}
+.ex-num{color:var(--accent-deep);font-weight:900;font-size:1.2rem;min-width:30px;padding-top:1px;}
+.ex-title-wrap{flex:1;min-width:0;}
+.ex-name{font-weight:900;font-size:1.05rem;}
+.ex-scheme{color:var(--muted);font-size:.9rem;margin-top:2px;font-weight:700;}
 .help-link{
   display:inline-block;margin:2px 0;font-size:.85rem;font-weight:800;
   color:var(--accent-deep);text-decoration:none;padding:10px 4px;min-height:44px;
 }
-.ex-fields{display:flex;gap:8px;margin-top:10px;}
-.ex-fields label{flex:1;font-size:.8rem;color:var(--muted);font-weight:700;}
-.ex-fields input{
-  width:100%;margin-top:4px;padding:10px;font-size:1rem;border-radius:12px;
-  border:2px solid var(--line);color:var(--ink);font-family:inherit;background:#fffdfd;
+/* set table */
+.sets-head{
+  display:grid;grid-template-columns:52px 1fr 1fr;gap:10px;
+  margin:12px 0 6px;color:var(--muted);font-size:.72rem;font-weight:800;letter-spacing:1.5px;
 }
-.ex-fields input:focus{outline:none;border-color:var(--accent);}
-.set-row{display:flex;gap:8px;align-items:flex-end;margin-top:8px;}
-.set-row .set-label{font-weight:800;color:var(--muted);font-size:.85rem;min-width:48px;padding-bottom:12px;}
-.set-row label{flex:1;font-size:.8rem;color:var(--muted);font-weight:700;}
-.set-row input{
-  width:100%;margin-top:4px;padding:10px;font-size:1rem;border-radius:12px;
-  border:2px solid var(--line);color:var(--ink);font-family:inherit;background:#fffdfd;
+.sets-head span{text-align:center;}
+.set-row{
+  display:grid;grid-template-columns:52px 1fr 1fr;gap:10px;
+  align-items:stretch;margin-bottom:10px;
 }
-.set-row input:focus{outline:none;border-color:var(--accent);}
-.add-set{margin-top:10px;width:100%;min-height:44px;}
+.set-badge{
+  background:linear-gradient(135deg,var(--accent),var(--accent-deep));color:#fff;
+  font-weight:900;font-size:1.1rem;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;min-height:54px;
+}
+.set-input{position:relative;background:#fdeef5;border:2px solid var(--line);border-radius:12px;}
+.set-input input{
+  width:100%;background:transparent;border:none;outline:none;
+  padding:14px 42px 14px 12px;font-size:1.1rem;font-weight:700;
+  font-family:inherit;color:var(--ink);text-align:center;
+}
+.set-input .unit{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  color:var(--muted);font-size:.78rem;font-weight:700;pointer-events:none;
+}
+.set-input:focus-within{border-color:var(--accent);}
+.add-set{margin-top:2px;width:100%;min-height:44px;}
 .sets-line{font-weight:700;}
 .note-label{display:block;font-weight:700;margin:6px 0 4px;}
 .note-label input{

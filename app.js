@@ -67,6 +67,25 @@ var EXERCISE_VIDEOS = {
   "Ski erg / rows": "https://www.instagram.com/reel/DaPUFm9zKB7/"
 };
 
+/* Prescribed set schemes per lift exercise (his gym-tracker style: "3 × 10"). */
+var SCHEMES = {
+  "Landmine rows": { sets: 3, reps: 10 },
+  "Seated rows or lat pulldowns": { sets: 3, reps: 12 },
+  "Seated incline bicep curls": { sets: 3, reps: 12 },
+  "21s Z-bar": { sets: 3, reps: 21 },
+  "Cable tricep pushdowns": { sets: 3, reps: 12 },
+  "Leg press": { sets: 3, reps: 12 },
+  "B-stance RDL": { sets: 3, reps: 10 },
+  "Weighted lunges": { sets: 3, reps: 12 },
+  "Hamstring curl": { sets: 3, reps: 12 },
+  "Leg extension": { sets: 3, reps: 12 },
+  "Barbell OHP": { sets: 3, reps: 10 },
+  "Around the worlds": { sets: 3, reps: 12 },
+  "Elevated push-ups": { sets: 3, reps: 12 },
+  "Cable rear delt flies": { sets: 3, reps: 15 },
+  "Ski erg / rows": { sets: 3, reps: 12 }
+};
+
 /* ---------- state ---------- */
 var DB = { checkins: [], weights: [], months: [] };
 var logDate = todayStr();
@@ -210,13 +229,28 @@ function lastWeight(ex) {
   }
   return { weight: "", reps: "" };
 }
-/* One set row inside an exercise card. i = exercise index, s = set number. */
+/* One set row inside an exercise block: set badge + weight + reps (table style). */
 function setRowHTML(i, s, w, r) {
   return '<div class="set-row" data-ex="' + i + '" data-set="' + s + '">' +
-    '<span class="set-label">Set ' + s + '</span>' +
-    '<label>lbs<input type="number" inputmode="decimal" min="0" step="0.5" data-w value="' + esc(w) + '" placeholder="lbs"></label>' +
-    '<label>reps<input type="number" inputmode="numeric" min="0" step="1" data-r value="' + esc(r) + '" placeholder="reps"></label>' +
+    '<span class="set-badge">' + s + '</span>' +
+    '<label class="set-input"><input type="number" inputmode="decimal" min="0" step="0.5" data-w value="' + esc(w) + '" placeholder="–"><span class="unit">lb</span></label>' +
+    '<label class="set-input"><input type="number" inputmode="numeric" min="0" step="1" data-r value="' + esc(r) + '" placeholder="–"><span class="unit">reps</span></label>' +
     '</div>';
+}
+/* Live "X/Y sets" counter in the workout header: X = set rows with weight or
+   reps entered, Y = total set rows. Updates as she types. */
+function updateSetCount() {
+  var rows = document.querySelectorAll('#detail-body .set-row');
+  var done = 0;
+  rows.forEach(function (sr) {
+    var wt = sr.querySelector('input[data-w]').value;
+    var rp = sr.querySelector('input[data-r]').value;
+    if (wt !== "" || rp !== "") done++;
+  });
+  var doneEl = document.getElementById("sets-done");
+  var totalEl = document.getElementById("sets-total");
+  if (doneEl) doneEl.textContent = done;
+  if (totalEl) totalEl.textContent = "/" + rows.length + " sets";
 }
 /* Normalize a Weights row to {date, exercise, set, weight, reps}.
    New layout is [Date, Exercise, Set, Weight, Reps]; old was [Date, Exercise, Weight, Reps]. */
@@ -312,6 +346,7 @@ function addSetTap(e) {
   var tmp = document.createElement("div");
   tmp.innerHTML = setRowHTML(i, existing.length + 1, lw, lr);
   setsDiv.appendChild(tmp.firstChild);
+  updateSetCount();
 }
 function openDetail(key) {
   logKey = key;
@@ -327,24 +362,41 @@ function openDetail(key) {
   var body = document.getElementById("detail-body");
   body.innerHTML = "";
   if (w.type === "lift") {
+    document.getElementById("log-count").style.display = "";
     w.exercises.forEach(function (ex, i) {
       var coach = coachFor(ex, logDate);
-      var row = document.createElement("div");
-      row.className = "ex-row";
-      row.innerHTML =
-        '<label class="ex-head"><input type="checkbox" data-i="' + i + '"> <span>' + esc(ex) + '</span></label>' +
-        (EXERCISE_VIDEOS[ex] ? '<a class="help-link" href="' + EXERCISE_VIDEOS[ex] + '" target="_blank" rel="noopener">Need help? 🎥</a>' : "") +
-        (coach.line ? '<div class="coach-line">💡 ' + esc(coach.line) + '</div>' : "") +
-        '<div class="sets" data-sets="' + i + '">' + setRowHTML(i, 1, coach.weight, coach.reps) + '</div>' +
+      var scheme = SCHEMES[ex] || { sets: 3, reps: 10 };
+      var block = document.createElement("div");
+      block.className = "ex-block";
+      block.setAttribute("data-ex", i);
+      var setsHTML = "";
+      for (var s = 1; s <= scheme.sets; s++) {
+        setsHTML += setRowHTML(i, s, s === 1 ? coach.weight : "", s === 1 ? coach.reps : "");
+      }
+      block.innerHTML =
+        '<div class="ex-head-row">' +
+          '<span class="ex-num">' + ("0" + (i + 1)).slice(-2) + '</span>' +
+          '<div class="ex-title-wrap">' +
+            '<div class="ex-name">' + esc(ex) + '</div>' +
+            '<div class="ex-scheme">' + scheme.sets + " \u00D7 " + scheme.reps + '</div>' +
+            (EXERCISE_VIDEOS[ex] ? '<a class="help-link" href="' + EXERCISE_VIDEOS[ex] + '" target="_blank" rel="noopener">Need help? \uD83C\uDFa5</a>' : "") +
+            (coach.line ? '<div class="coach-line">\uD83D\uDCA1 ' + esc(coach.line) + '</div>' : "") +
+          '</div>' +
+        '</div>' +
+        '<div class="sets-head"><span>SET</span><span>WEIGHT</span><span>REPS</span></div>' +
+        '<div class="sets" data-sets="' + i + '">' + setsHTML + '</div>' +
         '<button type="button" class="btn secondary small add-set" data-add="' + i + '">+ Add set</button>';
-      body.appendChild(row);
+      body.appendChild(block);
     });
+    updateSetCount();
   } else if (w.type === "cardio") {
+    document.getElementById("log-count").style.display = "none";
     body.innerHTML =
       '<div class="duration-row"><span>How long? ⏱️</span>' +
       '<input type="number" id="cardio-mins" inputmode="numeric" min="1" value="45">' +
       '<span>minutes</span></div>';
   } else {
+    document.getElementById("log-count").style.display = "none";
     body.innerHTML = '<div class="empty">Log some cozy recovery \uD83D\uDE0C<br>Stretch, hydrate, sleep like a queen.</div>';
   }
   document.getElementById("log-step-pick").classList.add("hidden");
@@ -358,19 +410,18 @@ function saveWorkout() {
   var note = document.getElementById("log-note").value.trim();
   var detail = "", items = [];
   if (w.type === "lift") {
-    var exRows = document.querySelectorAll('#detail-body .ex-row');
-    exRows.forEach(function (er) {
-      var cb = er.querySelector('input[type="checkbox"]');
-      if (!cb || !cb.checked) return;
-      var ex = w.exercises[+cb.getAttribute("data-i")];
-      er.querySelectorAll(".set-row").forEach(function (sr, sIdx) {
+    // No checkbox: a set counts as done when weight OR reps is filled in.
+    var blocks = document.querySelectorAll('#detail-body .ex-block');
+    blocks.forEach(function (blk) {
+      var ex = w.exercises[+blk.getAttribute("data-ex")];
+      blk.querySelectorAll(".set-row").forEach(function (sr, sIdx) {
         var wt = sr.querySelector("input[data-w]").value;
         var rp = sr.querySelector("input[data-r]").value;
         if (wt === "" && rp === "") return; // skip untouched sets
         items.push({ exercise: ex, set: sIdx + 1, weight: wt || "", reps: rp || "" });
       });
     });
-    if (!items.length) { toast("Check off an exercise and fill in a set first! \uD83D\uDE09", "error"); return; }
+    if (!items.length) { toast("Fill in at least one set first! \uD83D\uDE09", "error"); return; }
     detail = items.length + " set" + (items.length > 1 ? "s" : "");
   } else if (w.type === "cardio") {
     var mins = document.getElementById("cardio-mins").value || "";
@@ -711,6 +762,7 @@ function init() {
   document.getElementById("log-date").addEventListener("change", function (e) { logDate = e.target.value || todayStr(); });
   document.getElementById("save-workout").addEventListener("click", saveWorkout);
   document.getElementById("detail-body").addEventListener("click", addSetTap);
+  document.getElementById("detail-body").addEventListener("input", updateSetCount);
   document.getElementById("ex-select").addEventListener("change", renderWeights);
   document.getElementById("save-month").addEventListener("click", saveMonth);
   document.getElementById("cal-prev").addEventListener("click", function () { calShift(-1); });
