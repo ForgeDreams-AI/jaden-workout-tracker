@@ -115,7 +115,8 @@ var EXERCISE_IMAGES = {
 var DB = { checkins: [], weights: [], months: [] };
 var logDate = todayStr();
 var logKey = null;
-var logStartTime = null; // ISO timestamp set when she picks a workout
+var logStartTime = null; // ISO timestamp — set ONLY by the "Start workout" button press
+var startTimerId = null; // live timer interval id
 
 /* ---------- helpers ---------- */
 function esc(s) {
@@ -198,6 +199,8 @@ function show(view) {
   document.querySelectorAll(".tab").forEach(function (t) {
     t.classList.toggle("active", t.getAttribute("data-view") === view);
   });
+  // Leaving the log view abandons the in-progress start session.
+  if (view !== "log") resetStartButton();
   if (view === "calendar") {
     renderCalMonth();
     renderCalendar();
@@ -228,6 +231,7 @@ function renderHome() {
 
 /* ---------- log flow ---------- */
 function renderPicker() {
+  resetStartButton(); // back to pick = fresh session
   var grid = document.getElementById("workout-grid");
   grid.innerHTML = "";
   Object.keys(WORKOUTS).forEach(function (key) {
@@ -430,12 +434,49 @@ function helpTap(e) {
   if (!btn) return;
   openHelpModal(btn.getAttribute("data-help"));
 }
-function openDetail(key) {
-  logKey = key;
-  // Track when she starts logging: times the workout + enables the 2h nudge if she never submits.
+/* ---------- workout start button + live timer ---------- */
+/* The button press is the single source of truth for the start timestamp
+   (and the 2-hour nudge timer). Backdated days get no button at all. */
+function fmtElapsed(ms) {
+  var s = Math.max(0, Math.floor(ms / 1000));
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+function tickStartTimer() {
+  if (!logStartTime) return;
+  var el = document.getElementById("start-workout");
+  if (el) el.textContent = "\u23F1 " + fmtElapsed(Date.now() - Date.parse(logStartTime));
+}
+function stopStartTimer() {
+  if (startTimerId !== null) { clearInterval(startTimerId); startTimerId = null; }
+}
+/* Back to the unpressed "Start workout" state; forgets the start time. */
+function resetStartButton() {
+  stopStartTimer();
+  logStartTime = null;
+  var btn = document.getElementById("start-workout");
+  if (btn) {
+    btn.disabled = false;
+    btn.classList.remove("timer-live");
+    btn.textContent = "Start workout \uD83D\uDCAA";
+  }
+}
+function pressStartButton() {
+  if (logStartTime) return; // already started
   logStartTime = new Date().toISOString();
   api("start", { startedAt: logStartTime, date: document.getElementById("log-date").value || todayStr() })
     .catch(function () { /* best-effort; never block the UI */ });
+  var btn = document.getElementById("start-workout");
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add("timer-live");
+  }
+  tickStartTimer();
+  startTimerId = setInterval(tickStartTimer, 1000);
+}
+function openDetail(key) {
+  logKey = key;
+  // Fresh session: the start timestamp is set ONLY by the "Start workout" button.
+  resetStartButton();
   var w = WORKOUTS[key];
   document.getElementById("detail-title").textContent = w.emoji + " " + w.name;
   document.getElementById("detail-tag").textContent = w.tag;
@@ -483,6 +524,8 @@ function openDetail(key) {
   }
   document.getElementById("log-step-pick").classList.add("hidden");
   document.getElementById("log-step-detail").classList.remove("hidden");
+  // Start button only for today — no timer or start ping when backdating.
+  document.getElementById("start-wrap").classList.toggle("hidden", logDate !== todayStr());
   window.scrollTo(0, 0);
 }
 function saveWorkout() {
@@ -841,6 +884,7 @@ function init() {
   });
   document.getElementById("go-log").addEventListener("click", function () { show("log"); });
   document.getElementById("back-to-pick").addEventListener("click", renderPicker);
+  document.getElementById("start-workout").addEventListener("click", pressStartButton);
   document.getElementById("log-date").addEventListener("change", function (e) { logDate = e.target.value || todayStr(); });
   document.getElementById("save-workout").addEventListener("click", saveWorkout);
   document.getElementById("detail-body").addEventListener("click", addSetTap);

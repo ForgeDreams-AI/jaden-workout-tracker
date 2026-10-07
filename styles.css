@@ -162,6 +162,15 @@ h2{text-align:center;font-size:1.25rem;margin:18px 0 10px;}
   border:2px solid var(--line);color:var(--ink);font-family:inherit;background:#fff;
 }
 
+/* start workout button + live timer chip */
+#start-wrap{margin:2px 0 14px;}
+#start-workout{min-height:56px;}
+#start-workout.timer-live{
+  border-radius:999px;letter-spacing:2px;font-size:1.3rem;
+  animation:timerpulse 2s ease-in-out infinite;
+}
+@keyframes timerpulse{50%{box-shadow:0 6px 28px rgba(255,111,165,.5);}}
+
 /* history */
 .hist-item{
   background:var(--card);border:2px solid var(--line);border-radius:18px;
