@@ -30,7 +30,7 @@ var WORKOUTS = {
   upper:   { name: "Heavy Upper Body", emoji: "\uD83D\uDCAA", type: "lift",   tag: "Back & arms \u2014 lift heavy, pretty!",
              exercises: ["Landmine rows","Seated rows or lat pulldowns","Seated incline bicep curls","Dumbbell bench press","Cable tricep pushdowns"] },
   legs:    { name: "Heavy Legs",       emoji: "\uD83E\uDDB5", type: "lift",   tag: "Glutes, quads & hammies!",
-             exercises: ["Leg press","B-stance RDL","Weighted lunges","Hamstring curl","Leg extension"] },
+             exercises: ["Leg press","B-stance RDL","Bulgarian split squats","Hamstring curl","Leg extension"] },
   circuit: { name: "Circuit Endurance",emoji: "\uD83D\uDD25", type: "lift",   tag: "Full-body fire \u2014 keep that heart happy!",
              exercises: ["Barbell OHP","Around the worlds","Elevated push-ups","Cable rear delt flies","Ski erg / rows"] },
   pilates: { name: "Pilates",          emoji: "\uD83E\uDDD8\u200D\u2640\uFE0F", type: "cardio", tag: "Core, control & grace" },
@@ -57,7 +57,6 @@ var EXERCISE_VIDEOS = {
   "Cable tricep pushdowns": "https://www.instagram.com/reel/DcvmkH5OSYr/",
   "Leg press": "https://www.instagram.com/reel/DVzbgb_Esr0/",
   "B-stance RDL": "https://www.instagram.com/reel/DdPw6llpZWA/",
-  "Weighted lunges": "https://www.instagram.com/reel/DcRfKAngzuI/",
   "Hamstring curl": "https://www.instagram.com/reel/DWUiBKQD-Yo/",
   "Leg extension": "https://www.instagram.com/reel/DUV_oBWkZvp/",
   "Barbell OHP": "https://www.instagram.com/reel/DdF_8t1ylSh/",
@@ -74,7 +73,7 @@ var SCHEMES = {  "Landmine rows": { sets: 3, reps: 10 },
   "Cable tricep pushdowns": { sets: 3, reps: 12 },
   "Leg press": { sets: 3, reps: 12 },
   "B-stance RDL": { sets: 3, reps: 10 },
-  "Weighted lunges": { sets: 3, reps: 12 },
+  "Bulgarian split squats": { sets: 3, reps: 10 },
   "Hamstring curl": { sets: 3, reps: 12 },
   "Leg extension": { sets: 3, reps: 12 },
   "Barbell OHP": { sets: 3, reps: 10 },
@@ -100,7 +99,6 @@ var EXERCISE_IMAGES = {
   "Cable tricep pushdowns": imgPair("Triceps_Pushdown"),
   "Leg press": imgPair("Leg_Press"),
   "B-stance RDL": imgPair("Romanian_Deadlift"),
-  "Weighted lunges": imgPair("Dumbbell_Lunges"),
   "Hamstring curl": imgPair("Lying_Leg_Curls"),
   "Leg extension": imgPair("Leg_Extensions"),
   "Barbell OHP": imgPair("Standing_Military_Press"),
@@ -318,7 +316,7 @@ function prevMaxWeight(ex, date) {
   return mx;
 }
 /* Progressive-overload coach (E): suggestion + Set-1 prefill from her last session. */
-var LEG_EXERCISES = ["Leg press", "B-stance RDL", "Weighted lunges", "Hamstring curl", "Leg extension"];
+var LEG_EXERCISES = ["Leg press", "B-stance RDL", "Bulgarian split squats", "Hamstring curl", "Leg extension"];
 function coachFor(ex, date) {
   var sess = lastSession(ex, date);
   if (!sess) {
