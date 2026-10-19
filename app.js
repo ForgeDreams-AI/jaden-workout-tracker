@@ -189,6 +189,32 @@ function refresh() {
   });
 }
 
+/* ---------- program rotation: order-based, not tied to days of the week ---------- */
+var PROGRAM = [
+  { key: "upper",   note: "Back & arms — keep the weights heavy, that's what protects your muscle while you cut." },
+  { key: "legs",    note: "Glutes, quads & hammies. Bulgarian split squats, not lunges." },
+  { key: "rest",    note: "Full rest — or a gentle walk / Pilates if you feel like moving." },
+  { key: "circuit", note: "Full-body fire — push the pace, short rests." },
+  { key: "run",     note: "45-minute run — or swap in a Hike for fresh air." },
+  { alt: true,      note: "Second lift of the week. Alternate: Heavy Legs one week, Heavy Upper Body the next." },
+  { key: "rest",    note: "Full rest. Then start again at Day 1. 🔁" }
+];
+function renderPlan() {
+  var el = document.getElementById("plan-list");
+  el.innerHTML = PROGRAM.map(function (d, i) {
+    var w = d.alt ? null : WORKOUTS[d.key];
+    var title = d.alt ? "🔁 Alternate lift" : w.emoji + " " + w.name;
+    var tag = d.alt ? "Heavy Legs one week, Heavy Upper Body the next" : w.tag;
+    var ex = (w && w.exercises) ? "<ul class=\"plan-ex\">" + w.exercises.map(function (e) {
+      var s = SCHEMES[e];
+      return "<li>" + e + (s ? " <span class=\"plan-scheme\">" + s.sets + "×" + s.reps + "</span>" : "") + "</li>";
+    }).join("") + "</ul>" : "";
+    return "<div class=\"card plan-day\"><div class=\"plan-num\">Day " + (i + 1) + "</div>" +
+      "<div class=\"plan-title\">" + title + "</div><p class=\"tagline\">" + tag + "</p>" +
+      "<p class=\"plan-note\">" + d.note + "</p>" + ex + "</div>";
+  }).join("");
+}
+
 /* ---------- nav ---------- */
 function show(view) {
   document.querySelectorAll(".view").forEach(function (v) { v.classList.add("hidden"); });
@@ -876,6 +902,7 @@ function saveMonth() {
 /* ---------- init ---------- */
 function init() {
   renderPicker();
+  renderPlan();
   document.querySelectorAll(".tab").forEach(function (t) {
     t.addEventListener("click", function () { show(t.getAttribute("data-view")); });
   });

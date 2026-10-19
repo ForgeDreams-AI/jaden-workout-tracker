@@ -292,3 +292,14 @@ h2{text-align:center;font-size:1.25rem;margin:18px 0 10px;}
 .help-imgs .empty{flex:1;}
 #help-coach{margin:0 0 12px;}
 #help-video{display:block;text-decoration:none;margin-top:6px;}
+
+/* ---------- program plan ---------- */
+.plan-intro{text-align:center;color:var(--muted);margin:0 0 14px;font-size:.92rem;}
+.plan-day{margin-bottom:12px;}
+.plan-num{display:inline-block;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-deep);background:#ffe3ee;border-radius:999px;padding:4px 12px;margin-bottom:8px;}
+.plan-title{font-size:1.15rem;font-weight:800;}
+.plan-day .tagline{text-align:left;margin:2px 0 8px;}
+.plan-note{margin:0 0 10px;font-size:.92rem;}
+.plan-ex{margin:0;padding:0;list-style:none;display:grid;gap:6px;}
+.plan-ex li{background:#fff7fb;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:.9rem;display:flex;justify-content:space-between;align-items:center;}
+.plan-scheme{font-weight:700;color:var(--accent-deep);font-size:.82rem;}
