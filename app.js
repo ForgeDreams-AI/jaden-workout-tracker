@@ -346,7 +346,7 @@ function prevMaxWeight(ex, date) {
   });
   return mx;
 }
-/* Progressive-overload coach (E): suggestion + Set-1 prefill from her last session. */
+/* Progressive-overload coach, his-tracker style auto-bump: every logged set hit the\n   top of the rep range -> weight goes up next session (+10 legs, +5 everything else). */
 var LEG_EXERCISES = ["Leg press", "B-stance RDL", "Bulgarian split squats", "Hamstring curl", "Leg extension"];
 function coachFor(ex, date) {
   var sess = lastSession(ex, date);
@@ -359,31 +359,32 @@ function coachFor(ex, date) {
     var reps = sess.sets.map(function (s) { return s.reps == null || s.reps === "" ? "–" : String(s.reps); }).join(", ");
     return { line: "Last time: bodyweight × " + reps + " — add reps or slow it down 💪", weight: "", reps: "" };
   }
-  var topW = null, topReps = "", wCount = 0, repSum = 0, repCount = 0;
+  var scheme = SCHEMES[ex] || { sets: 3, reps: 10 };
+  var topW = null, topReps = "";
   sess.sets.forEach(function (s) {
-    var wt = num(s.weight), rp = num(s.reps);
-    if (wt !== null) {
-      wCount++;
-      if (topW === null || wt > topW) { topW = wt; topReps = s.reps == null ? "" : String(s.reps); }
-    }
-    if (rp !== null) { repSum += rp; repCount++; }
+    var wt = num(s.weight);
+    if (wt !== null && (topW === null || wt > topW)) { topW = wt; topReps = s.reps == null ? "" : String(s.reps); }
   });
   if (topW === null) {
     var lw2 = lastWeight(ex);
-    return { line: "", weight: lw2.weight, reps: lw2.reps };
+    return { line: "", weight: lw2.weight, reps: lw2.reps, bumped: false };
   }
-  var avg = repCount ? repSum / repCount : null;
   var setsTxt = "Last time: " + topW + " lbs \u00D7 " +
     sess.sets.map(function (s) { return s.reps == null || s.reps === "" ? "\u2013" : String(s.reps); }).join(", ");
+  // His-tracker auto-bump: every set hit the top of the rep range -> weight goes up.
   var bump = LEG_EXERCISES.indexOf(ex) >= 0 ? 10 : 5;
-  if (wCount >= 2 && avg !== null && avg >= 8) {
+  var allTop = sess.sets.length >= 2 && sess.sets.every(function (s) {
+    var rp = num(s.reps);
+    return rp !== null && rp >= scheme.reps;
+  });
+  if (allTop) {
     var target = Math.round((topW + bump) * 10) / 10;
     return {
-      line: setsTxt + " \u2014 you crushed it! Try " + target + " lbs today \uD83D\uDCAA",
-      weight: String(target), reps: topReps
+      line: setsTxt + " \u2014 every set hit " + scheme.reps + " reps! \uD83D\uDCC8 Up to " + target + " lbs today \uD83D\uDCAA",
+      weight: String(target), reps: String(scheme.reps), bumped: true, from: topW, to: target
     };
   }
-  return { line: setsTxt + " \uD83D\uDC96", weight: String(topW), reps: topReps };
+  return { line: setsTxt + " \uD83D\uDC96", weight: String(topW), reps: topReps, bumped: false };
 }
 /* Workout name -> WORKOUTS key, for emoji + type lookups. */
 var NAME2KEY = {};
@@ -853,6 +854,23 @@ function renderWeights() {
   if (!order.length) {
     list.innerHTML = '<div class="empty">No weights logged for this one yet \uD83D\uDCAA</div>';
     return;
+  }
+  // Going-up-in-weight tracker: top weight first session vs latest.
+  function topOf(sets) {
+    var mx = null;
+    sets.forEach(function (s) { var wt = num(s.weight); if (wt !== null && (mx === null || wt > mx)) mx = wt; });
+    return mx;
+  }
+  if (order.length >= 2) {
+    var firstTop = topOf(byDate[order[0]]), lastTop = topOf(byDate[order[order.length - 1]]);
+    if (firstTop !== null && lastTop !== null) {
+      var d = Math.round((lastTop - firstTop) * 10) / 10;
+      var ddiv = document.createElement("div");
+      ddiv.className = "w-delta" + (d < 0 ? " down" : "");
+      ddiv.textContent = (d > 0 ? "\uD83D\uDCC8 +" : d < 0 ? "\uD83D\uDCC9 " : "\u27A1\uFE0F ") + d +
+        " lbs since " + prettyDate(order[0]) + " \uD83D\uDCAA";
+      list.appendChild(ddiv);
+    }
   }
   order.reverse().forEach(function (d) {
     var sets = byDate[d].sort(function (a, b) { return a.set - b.set; })

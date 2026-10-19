@@ -315,3 +315,7 @@ h2{text-align:center;font-size:1.25rem;margin:18px 0 10px;}
 /* ---------- bodyweight toggle ---------- */
 .bw-toggle.active{background:linear-gradient(135deg,#57b978,#3d9e5f);color:#fff;border-color:#3d9e5f;}
 .set-row .set-input input:disabled{opacity:.45;}
+
+/* ---------- going-up-in-weight tracker ---------- */
+.w-delta{background:#eefaf2;border:2px solid #57b978;color:#2c7a4b;font-weight:800;border-radius:12px;padding:10px 14px;margin-bottom:10px;text-align:center;}
+.w-delta.down{background:#fdf0f0;border-color:#e88;color:#a33;}
