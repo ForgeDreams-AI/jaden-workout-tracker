@@ -281,23 +281,26 @@ function lastWeight(ex) {
   }
   return { weight: "", reps: "" };
 }
-/* One set row inside an exercise block: set badge + weight + reps (table style). */
+/* One set row inside an exercise block: tap-to-log button + weight + reps.
+   Like his tracker: weights come prefilled from last session, one tap logs the set. */
 function setRowHTML(i, s, w, r) {
   return '<div class="set-row" data-ex="' + i + '" data-set="' + s + '">' +
-    '<span class="set-badge">' + s + '</span>' +
+    '<button type="button" class="set-done" data-done data-num="' + s + '" aria-label="Log set ' + s + '">' + s + '</button>' +
     '<label class="set-input"><input type="number" inputmode="decimal" min="0" step="0.5" data-w value="' + esc(w) + '" placeholder="–"><span class="unit">lb</span></label>' +
     '<label class="set-input"><input type="number" inputmode="numeric" min="0" step="1" data-r value="' + esc(r) + '" placeholder="–"><span class="unit">reps</span></label>' +
     '</div>';
 }
-/* Live "X/Y sets" counter in the workout header: X = set rows with weight or
-   reps entered, Y = total set rows. Updates as she types. */
+/* Live "X/Y sets" counter in the workout header: X = sets tapped done or
+   typed into (prefilled-but-untouched sets don't count). Updates as she types. */
 function updateSetCount() {
   var rows = document.querySelectorAll('#detail-body .set-row');
   var done = 0;
   rows.forEach(function (sr) {
-    var wt = sr.querySelector('input[data-w]').value;
-    var rp = sr.querySelector('input[data-r]').value;
-    if (wt !== "" || rp !== "") done++;
+    if (sr.classList.contains("done")) { done++; return; }
+    var inputs = sr.querySelectorAll('input[data-w],input[data-r]');
+    for (var k = 0; k < inputs.length; k++) {
+      if (inputs[k].value !== "" && !inputs[k].hasAttribute("data-p")) { done++; break; }
+    }
   });
   var doneEl = document.getElementById("sets-done");
   var totalEl = document.getElementById("sets-total");
@@ -384,9 +387,47 @@ function checkinByDate(ds) {
   }
   return null;
 }
+/* One-tap set logging (his-tracker style): tap the set number to log the set
+   at the shown weight/reps. Tap again to undo. */
+function fillEmptyFromFirst(row) {
+  var blk = row.closest ? row.closest(".ex-block") : null;
+  var first = blk ? blk.querySelector(".set-row") : null;
+  if (!first) return;
+  var w0 = first.querySelector("input[data-w]").value;
+  var r0 = first.querySelector("input[data-r]").value;
+  var w = row.querySelector("input[data-w]"), r = row.querySelector("input[data-r]");
+  if (w && w.value === "" && w0 !== "") w.value = w0;
+  if (r && r.value === "" && r0 !== "") r.value = r0;
+}
+function setDoneTap(e) {
+  var btn = e.target && e.target.closest ? e.target.closest("[data-done]") : null;
+  if (btn) {
+    var row = btn.closest(".set-row");
+    var done = row.classList.toggle("done");
+    btn.textContent = done ? "✓" : btn.getAttribute("data-num");
+    if (done) fillEmptyFromFirst(row);
+    updateSetCount();
+    return;
+  }
+  var all = e.target && e.target.closest ? e.target.closest("[data-logall]") : null;
+  if (all) {
+    var blk = all.closest(".ex-block");
+    blk.querySelectorAll(".set-row:not(.done)").forEach(function (r) {
+      fillEmptyFromFirst(r);
+      r.classList.add("done");
+      var b = r.querySelector("[data-done]");
+      if (b) b.textContent = "✓";
+    });
+    updateSetCount();
+  }
+}
+/* A keystroke in a prefilled input makes it hers — it now counts as entered. */
+function prefillTouch(e) {
+  var inp = e.target && e.target.closest ? e.target.closest("input[data-p]") : null;
+  if (inp) inp.removeAttribute("data-p");
+}
 /* "+ Add set" taps (delegated on #detail-body, attached once in init). */
-function addSetTap(e) {
-  var btn = e.target && e.target.closest ? e.target.closest("[data-add]") : null;
+function addSetTap(e) {  var btn = e.target && e.target.closest ? e.target.closest("[data-add]") : null;
   if (!btn) return;
   var i = btn.getAttribute("data-add");
   var setsDiv = document.querySelector('.sets[data-sets="' + i + '"]');
@@ -397,7 +438,10 @@ function addSetTap(e) {
   var lr = last ? last.querySelector("input[data-r]").value : "";
   var tmp = document.createElement("div");
   tmp.innerHTML = setRowHTML(i, existing.length + 1, lw, lr);
-  setsDiv.appendChild(tmp.firstChild);
+  var newRow = tmp.firstChild;
+  // Copied values on an explicitly added set count as hers, not prefill.
+  newRow.querySelectorAll("input[data-p]").forEach(function (inp) { inp.removeAttribute("data-p"); });
+  setsDiv.appendChild(newRow);
   updateSetCount();
 }
 /* ---------- "Need help?" bottom sheet ---------- */
@@ -517,7 +561,8 @@ function openDetail(key) {
       block.setAttribute("data-ex", i);
       var setsHTML = "";
       for (var s = 1; s <= scheme.sets; s++) {
-        setsHTML += setRowHTML(i, s, s === 1 ? coach.weight : "", s === 1 ? coach.reps : "");
+        // Every set prefilled from last session — tap to log, edit only if it changed.
+        setsHTML += setRowHTML(i, s, coach.weight, coach.reps);
       }
       block.innerHTML =
         '<div class="ex-head-row">' +
@@ -531,8 +576,17 @@ function openDetail(key) {
         '</div>' +
         '<div class="sets-head"><span>SET</span><span>WEIGHT</span><span>REPS</span></div>' +
         '<div class="sets" data-sets="' + i + '">' + setsHTML + '</div>' +
-        '<button type="button" class="btn secondary small add-set" data-add="' + i + '">+ Add set</button>';
+        '<div class="ex-actions">' +
+          '<button type="button" class="btn secondary small" data-logall="' + i + '">✓ Log all sets</button>' +
+          '<button type="button" class="btn secondary small add-set" data-add="' + i + '">+ Add set</button>' +
+        '</div>';
       body.appendChild(block);
+    });
+    // Mark prefilled values so untouched sets don't count as done or get saved.
+    body.querySelectorAll(".set-row").forEach(function (sr) {
+      sr.querySelectorAll("input").forEach(function (inp) {
+        if (inp.value !== "") inp.setAttribute("data-p", "1");
+      });
     });
     updateSetCount();
   } else if (w.type === "cardio") {
@@ -558,14 +612,20 @@ function saveWorkout() {
   var note = document.getElementById("log-note").value.trim();
   var detail = "", items = [];
   if (w.type === "lift") {
-    // No checkbox: a set counts as done when weight OR reps is filled in.
+    // A set counts when tapped done (green check) or when she types into it —
+    // prefilled-but-untouched sets don't count, so saving can't log work she didn't do.
     var blocks = document.querySelectorAll('#detail-body .ex-block');
     blocks.forEach(function (blk) {
       var ex = w.exercises[+blk.getAttribute("data-ex")];
       blk.querySelectorAll(".set-row").forEach(function (sr, sIdx) {
-        var wt = sr.querySelector("input[data-w]").value;
-        var rp = sr.querySelector("input[data-r]").value;
-        if (wt === "" && rp === "") return; // skip untouched sets
+        if (sr.classList.contains("done")) fillEmptyFromFirst(sr);
+        var wtIn = sr.querySelector("input[data-w]"), rpIn = sr.querySelector("input[data-r]");
+        var wt = wtIn.value, rp = rpIn.value;
+        var touched = sr.classList.contains("done") ||
+          (wt !== "" && !wtIn.hasAttribute("data-p")) ||
+          (rp !== "" && !rpIn.hasAttribute("data-p"));
+        if (!touched) return; // skip prefilled-but-untouched sets
+        if (wt === "" && rp === "") return;
         items.push({ exercise: ex, set: sIdx + 1, weight: wt || "", reps: rp || "" });
       });
     });
@@ -912,7 +972,9 @@ function init() {
   document.getElementById("log-date").addEventListener("change", function (e) { logDate = e.target.value || todayStr(); });
   document.getElementById("save-workout").addEventListener("click", saveWorkout);
   document.getElementById("detail-body").addEventListener("click", addSetTap);
+  document.getElementById("detail-body").addEventListener("click", setDoneTap);
   document.getElementById("detail-body").addEventListener("click", helpTap);
+  document.getElementById("detail-body").addEventListener("input", prefillTouch);
   document.getElementById("detail-body").addEventListener("input", updateSetCount);
   document.getElementById("help-close").addEventListener("click", closeHelpModal);
   document.getElementById("help-modal").addEventListener("click", function (e) {
