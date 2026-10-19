@@ -311,3 +311,7 @@ h2{text-align:center;font-size:1.25rem;margin:18px 0 10px;}
 .set-row.done .set-input{border-color:#57b978;background:#eefaf2;}
 .ex-actions{display:flex;gap:8px;margin-top:2px;}
 .ex-actions .btn{flex:1;min-height:44px;}
+
+/* ---------- bodyweight toggle ---------- */
+.bw-toggle.active{background:linear-gradient(135deg,#57b978,#3d9e5f);color:#fff;border-color:#3d9e5f;}
+.set-row .set-input input:disabled{opacity:.45;}

@@ -297,7 +297,9 @@ function updateSetCount() {
   var done = 0;
   rows.forEach(function (sr) {
     if (sr.classList.contains("done")) { done++; return; }
-    var inputs = sr.querySelectorAll('input[data-w],input[data-r]');
+    var blk = sr.closest ? sr.closest(".ex-block") : null;
+    var isBW = blk && blk.classList.contains("bw");
+    var inputs = sr.querySelectorAll(isBW ? "input[data-r]" : "input[data-w],input[data-r]");
     for (var k = 0; k < inputs.length; k++) {
       if (inputs[k].value !== "" && !inputs[k].hasAttribute("data-p")) { done++; break; }
     }
@@ -352,6 +354,11 @@ function coachFor(ex, date) {
     var lw = lastWeight(ex);
     return { line: "", weight: lw.weight, reps: lw.reps };
   }
+  // Bodyweight history: no pound suggestion, just reps.
+  if (sess.sets.length && sess.sets.every(function (s) { return String(s.weight).toUpperCase() === "BW"; })) {
+    var reps = sess.sets.map(function (s) { return s.reps == null || s.reps === "" ? "–" : String(s.reps); }).join(", ");
+    return { line: "Last time: bodyweight × " + reps + " — add reps or slow it down 💪", weight: "", reps: "" };
+  }
   var topW = null, topReps = "", wCount = 0, repSum = 0, repCount = 0;
   sess.sets.forEach(function (s) {
     var wt = num(s.weight), rp = num(s.reps);
@@ -393,10 +400,11 @@ function fillEmptyFromFirst(row) {
   var blk = row.closest ? row.closest(".ex-block") : null;
   var first = blk ? blk.querySelector(".set-row") : null;
   if (!first) return;
+  var isBW = blk.classList.contains("bw");
   var w0 = first.querySelector("input[data-w]").value;
   var r0 = first.querySelector("input[data-r]").value;
   var w = row.querySelector("input[data-w]"), r = row.querySelector("input[data-r]");
-  if (w && w.value === "" && w0 !== "") w.value = w0;
+  if (!isBW && w && w.value === "" && w0 !== "") w.value = w0;
   if (r && r.value === "" && r0 !== "") r.value = r0;
 }
 function setDoneTap(e) {
@@ -426,6 +434,27 @@ function prefillTouch(e) {
   var inp = e.target && e.target.closest ? e.target.closest("input[data-p]") : null;
   if (inp) inp.removeAttribute("data-p");
 }
+/* Bodyweight toggle: one tap per exercise marks every set as BW instead of pounds.
+   The choice is remembered — next session defaults to whatever she used last time. */
+function setBW(blk, on) {
+  blk.classList.toggle("bw", on);
+  var btn = blk.querySelector("[data-bw]");
+  if (btn) {
+    btn.classList.toggle("active", on);
+    btn.textContent = on ? "✓ BW" : "BW";
+  }
+  blk.querySelectorAll(".set-row").forEach(function (row) {
+    var wIn = row.querySelector("input[data-w]");
+    if (wIn) wIn.disabled = on;
+  });
+  updateSetCount();
+}
+function bwToggleTap(e) {
+  var btn = e.target && e.target.closest ? e.target.closest("[data-bw]") : null;
+  if (!btn) return;
+  var blk = btn.closest(".ex-block");
+  setBW(blk, !blk.classList.contains("bw"));
+}
 /* "+ Add set" taps (delegated on #detail-body, attached once in init). */
 function addSetTap(e) {  var btn = e.target && e.target.closest ? e.target.closest("[data-add]") : null;
   if (!btn) return;
@@ -441,6 +470,9 @@ function addSetTap(e) {  var btn = e.target && e.target.closest ? e.target.close
   var newRow = tmp.firstChild;
   // Copied values on an explicitly added set count as hers, not prefill.
   newRow.querySelectorAll("input[data-p]").forEach(function (inp) { inp.removeAttribute("data-p"); });
+  // Inherit the block's bodyweight state.
+  var wIn = newRow.querySelector("input[data-w]");
+  if (wIn && setsDiv.closest(".ex-block").classList.contains("bw")) wIn.disabled = true;
   setsDiv.appendChild(newRow);
   updateSetCount();
 }
@@ -579,8 +611,14 @@ function openDetail(key) {
         '<div class="ex-actions">' +
           '<button type="button" class="btn secondary small" data-logall="' + i + '">✓ Log all sets</button>' +
           '<button type="button" class="btn secondary small add-set" data-add="' + i + '">+ Add set</button>' +
+          '<button type="button" class="btn secondary small bw-toggle" data-bw="' + i + '">BW</button>' +
         '</div>';
       body.appendChild(block);
+      // Remember bodyweight choice: if last session was all BW, start toggled on.
+      var ls = lastSession(ex, logDate);
+      if (ls && ls.sets.length && ls.sets.every(function (s) { return String(s.weight).toUpperCase() === "BW"; })) {
+        setBW(block, true);
+      }
     });
     // Mark prefilled values so untouched sets don't count as done or get saved.
     body.querySelectorAll(".set-row").forEach(function (sr) {
@@ -619,11 +657,12 @@ function saveWorkout() {
       var ex = w.exercises[+blk.getAttribute("data-ex")];
       blk.querySelectorAll(".set-row").forEach(function (sr, sIdx) {
         if (sr.classList.contains("done")) fillEmptyFromFirst(sr);
+        var isBW = blk.classList.contains("bw");
         var wtIn = sr.querySelector("input[data-w]"), rpIn = sr.querySelector("input[data-r]");
-        var wt = wtIn.value, rp = rpIn.value;
+        var wt = isBW ? "BW" : wtIn.value, rp = rpIn.value;
         var touched = sr.classList.contains("done") ||
-          (wt !== "" && !wtIn.hasAttribute("data-p")) ||
-          (rp !== "" && !rpIn.hasAttribute("data-p"));
+          (!isBW && wtIn.value !== "" && !wtIn.hasAttribute("data-p")) ||
+          (rpIn.value !== "" && !rpIn.hasAttribute("data-p"));
         if (!touched) return; // skip prefilled-but-untouched sets
         if (wt === "" && rp === "") return;
         items.push({ exercise: ex, set: sIdx + 1, weight: wt || "", reps: rp || "" });
@@ -973,6 +1012,7 @@ function init() {
   document.getElementById("save-workout").addEventListener("click", saveWorkout);
   document.getElementById("detail-body").addEventListener("click", addSetTap);
   document.getElementById("detail-body").addEventListener("click", setDoneTap);
+  document.getElementById("detail-body").addEventListener("click", bwToggleTap);
   document.getElementById("detail-body").addEventListener("click", helpTap);
   document.getElementById("detail-body").addEventListener("input", prefillTouch);
   document.getElementById("detail-body").addEventListener("input", updateSetCount);
